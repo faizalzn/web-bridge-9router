@@ -2,13 +2,15 @@ import type { Config } from '../core/config.ts';
 import { BridgeError } from '../core/errors.ts';
 import { logger } from '../core/logger.ts';
 import type { Provider, ProviderDeps, ProviderFactory } from './base.ts';
+import { ClaudeProvider } from './claude/index.ts';
 import { EchoProvider } from './echo/index.ts';
 import { GeminiProvider } from './gemini/index.ts';
 
-// New adapters register here (claude, chatgpt, ... in later sprints).
+// New adapters register here (chatgpt, ... in later sprints).
 const FACTORIES: Record<string, ProviderFactory> = {
   echo: () => new EchoProvider(),
   gemini: (cfg, deps) => new GeminiProvider(cfg, deps),
+  claude: (cfg, deps) => new ClaudeProvider(cfg, deps),
 };
 
 export interface PublicModel { id: string; provider: Provider; localId: string; account?: string; name?: string }

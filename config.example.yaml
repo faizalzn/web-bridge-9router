@@ -44,7 +44,13 @@ providers:
     # jitter: 1.5              # extra random seconds, so requests are not evenly spaced
     # max_waiting: 10          # requests allowed to queue per account before answering 429
     # max_wait: 180            # seconds a request may wait for its turn
-  # claude:              # Sprint 5
-  #   enabled: true
+  claude:                # Claude through your claude.ai web login (bridge login claude); needs session.hold_in_browser
+    enabled: false
+    # effort: medium           # low | medium | high | default (what claude.ai picks)
+    # reuse_chats: true        # continue the same web chat when 9router resends a longer history
+    # min_interval: 2          # seconds between two requests to the same account
+    # jitter: 1.5
+    # max_waiting: 10
+    # max_wait: 180
   # chatgpt:             # Sprint 5
   #   enabled: true
