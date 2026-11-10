@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { importSession, interactiveLogin, logout } from './auth/login.ts';
 import { SessionService } from './auth/session-service.ts';
 import { browserLoginCheck } from './browser/held-check.ts';
-import { heldProfileDir } from './browser/launcher.ts';
+import { browserCandidates, heldProfileDir } from './browser/launcher.ts';
+import { findBrowsers, readProfileOwner } from './browser/detect.ts';
 import { BrowserManager } from './browser/manager.ts';
 import {
   DEFAULT_ACCOUNT, hasLoginCookies, sessionExpiry, sessionState, SessionStore, validateAccountName,
@@ -36,6 +37,7 @@ Commands:
   logout <provider>  Remove a provider session
   sessions           List saved sessions
   check <provider>   Ask the provider whether the saved login still works and refresh its cookies
+  browsers           List the browsers found on this computer and which one the gateway uses
   update             Update provider manifests     (coming in Sprint 6)
   gui <install|uninstall|enable>                   (coming in Sprint 7)
   version            Print version
@@ -276,6 +278,34 @@ function cmdModels(): void {
   for (const m of createRegistry(config, { config, sessions }).models()) console.log(`${m.id.padEnd(28)} ${m.name ?? ''}`);
 }
 
+function cmdBrowsers(): void {
+  const config = load();
+  const found = findBrowsers();
+  const chosen = browserCandidates(config.browser, found);
+  const setting = config.browser.executablePath ? `executable_path: ${config.browser.executablePath}` : `channel: ${config.browser.channel}`;
+  console.log(`Browsers found on this computer (${process.platform}):`);
+  if (!found.length) console.log('  (none in the usual places)');
+  for (const b of found) {
+    const used = chosen[0]?.executablePath === b.path;
+    console.log(`  ${used ? '*' : ' '} ${b.name.padEnd(16)} ${b.path}`);
+  }
+  console.log(chosen.length
+    ? `\nThe gateway uses: ${chosen[0]!.name}${chosen[0]!.channel ? ' (located by Playwright)' : ''}  [browser.${setting}]`
+    : `\nNo usable browser for browser.${setting}. Install one of: Microsoft Edge, Google Chrome, Chromium, Brave, Vivaldi, or set browser.executable_path.`);
+
+  const dir = join(config.dataDir, 'profiles');
+  const profiles = existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
+  if (profiles.length) {
+    console.log('\nLogin profiles (a profile only works with the browser that made it):');
+    for (const p of profiles) {
+      const owner = readProfileOwner(join(dir, p));
+      console.log(`  ${p.padEnd(24)} ${owner ? owner.name : 'not recorded yet (recorded on its next use)'}`);
+    }
+  }
+  console.log('\nSupported: Chromium-based browsers (Edge, Chrome, Chromium, Brave, Vivaldi). Firefox and Safari are not:'
+    + '\nPlaywright can only drive its own builds of them, not the ones installed on the computer.');
+}
+
 async function main(): Promise<void> {
   const cmd = opts.help ? 'help' : (positionals[0] ?? 'help');
   switch (cmd) {
@@ -289,6 +319,7 @@ async function main(): Promise<void> {
     case 'logout': return cmdLogout();
     case 'sessions': return cmdSessions();
     case 'check': return cmdCheck();
+    case 'browsers': return cmdBrowsers();
     case 'update': case 'gui':
       console.log(`"${cmd}" is not available yet. See the roadmap in README.md.`);
       return;

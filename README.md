@@ -20,7 +20,8 @@ Use it with your own accounts, for personal use, at a reasonable volume. You use
 ## Requirements
 
 - Node.js 20+ (Node 22.18+ can run the TypeScript sources directly)
-- Microsoft Edge or Google Chrome, used for logging in (from Sprint 2)
+- A Chromium-based browser: Microsoft Edge, Google Chrome, Chromium, Brave or Vivaldi, on Windows, macOS or Linux
+  (see [Choosing a browser](#choosing-a-browser)). Firefox and Safari are not supported.
 
 ## Quick start
 
@@ -62,6 +63,29 @@ Other session commands: `sessions` (list, with the result of the last real check
 
 Choose how long a login is kept with `--keep 1d | 3d | 7d | 30d | forever` (default `forever`, or `session.retention`
 in `config.yaml`). A login older than that is deleted automatically.
+
+### Choosing a browser
+
+The gateway drives a browser that is already installed. `bridge browsers` lists what it found and which one it uses.
+
+```yaml
+browser:
+  channel: auto        # auto | msedge | chrome | chromium | brave | vivaldi
+  executable_path: ""  # or the full path of any other Chromium-based browser (wins over channel)
+```
+
+`auto` looks in the usual install locations and picks, in this order: Edge, Chrome, Brave, Vivaldi, Chromium on
+Windows; Chrome, Edge, Brave, Vivaldi, Chromium on macOS (`/Applications` and `~/Applications`); Chrome, Edge,
+Chromium, Brave, Vivaldi on Linux (`/opt/...` and the names on `PATH`, such as `chromium-browser` or `brave-browser`).
+
+A login profile only works with the browser that made it: on Windows and macOS its cookies are encrypted with a key
+that belongs to that browser. The gateway records the browser in the profile (`web-bridge-browser.json`). If
+`config.yaml` later chooses another browser, it stops with a clear message instead of silently losing the login: set
+the browser back, or log in again with `--force`.
+
+Firefox and Safari are not supported: Playwright can only drive its own patched builds of them, not the copies
+installed on the computer. Chromium from a Linux snap may not be able to write a profile outside your home folder;
+keep `data_dir` inside your home folder, or use the `.deb`/`.rpm` package of the browser.
 
 ### Keeping the login alive
 
@@ -135,6 +159,28 @@ keep using it; the lighter mode is tried again every 10 minutes. `bridge status`
 - **Slow answers:** a web chat can need a minute before its first word. After 20 s without one, the gateway opens the stream anyway and sends an SSE comment (`: keep-alive`) every 15 s, because some clients (9router waits 60 s for the response headers) otherwise give up and send the same request again. An error that happens earlier is answered with a normal HTTP status; a later one arrives as an error event inside the stream. Every request is logged with where its time went (waiting, first reply, total, new or continued chat).
 - In modes A and B the model is chosen per request and your account's saved model is not touched. Mode C changes the model picker of your account while it works and puts it back afterwards.
 
+## Claude
+
+```bash
+node dist/cli.js login claude
+```
+
+Then set `providers.claude.enabled: true`. Models: `claude/sonnet` (default), `claude/opus`, `claude/haiku`.
+Only Sonnet 5.5 has been seen on the wire so far; the other two use the same naming and are not tested yet (a plan
+without access to one should get an HTTP 400 error; not seen yet).
+
+- Mode B only: the request is sent from inside a claude.ai page in the account's own browser profile, so the login
+  must be held by that profile (`session.hold_in_browser: true`, the default). claude.ai sits behind Cloudflare, so
+  there is no plain-HTTP mode. If Cloudflare shows a bot check, the request fails with HTTP 503; the gateway does not
+  try to get past it.
+- No connector or server tools of the account (documents, web search, widgets) are sent, so the model cannot act on
+  the account by itself. Tool calling for clients such as Hermes is emulated by the gateway, as for Gemini.
+- 9router's growing history continues the same claude.ai chat (only the new message is sent).
+- The quota claude.ai reports after each answer is logged (`quota used 5h 7% / 7d 0%`) and shown by `bridge status`.
+  When the usage limit is reached, requests fail with HTTP 429.
+- `effort` (`low | medium | high | default`, default `medium`) is passed as the page passes it.
+- Not there yet: deleting the chats the gateway creates, a keep-alive visit for Claude logins, attachments.
+
 ## Known limitations
 
 - Tool calling is emulated in text, so it is less reliable than a real API. Two measurements with the Argon model: in a small isolated test with a bare prompt (six prompts, one try each, repeated a few times) the model answered with a valid call for roughly half to two thirds of the requests that needed one; in real use through Hermes, 12 simple task prompts (list a folder, create, read and edit a file, run a command, search the web) were all completed. When the model skips a call it describes the action or pastes code instead, and the client sees a plain text answer; asking again usually helps. Both samples are small, the tasks were simple, and Flash and Pro were not measured.
@@ -162,6 +208,7 @@ keep using it; the lighter mode is tried again every 10 minutes. `bridge status`
 bridge init | start | status | models | version
 bridge login <provider> [--account name] [--force] [--keep 7d] [--import file]
 bridge logout <provider> [--account name] | sessions | check <provider> [--account name]
+bridge browsers                                 browsers found and the one in use
 bridge update                                   (Sprint 6)
 bridge gui install | uninstall                  (Sprint 7)
 ```
@@ -173,7 +220,8 @@ bridge gui install | uninstall                  (Sprint 7)
 3. 🟡 Gemini adapter (modes A, B and C), automatic mode switching, conversation cache. Working; long-term
    session durability and chat deletion still need a clean multi-hour verification.
 4. 🟡 Emulated tool calling. Working and tested with a mock provider and live on Gemini; reliability depends on the model (see Known limitations).
-5. Claude and ChatGPT adapters
+5. 🟡 Claude adapter (claude.ai, mode B): first real answers on 10 Nov 2026. Choice of browser on Windows, macOS
+   and Linux. ChatGPT adapter still to do.
 6. Automatic manifest updates and app update notices
 7. Optional web GUI, downloaded from GitHub Releases
 8. More providers and full documentation
@@ -203,7 +251,8 @@ wajar. Risiko pemakaian ditanggung sendiri.
 ## Kebutuhan
 
 - Node.js 20+ (Node 22.18+ bisa langsung menjalankan source TypeScript)
-- Microsoft Edge atau Google Chrome, dipakai untuk login (mulai Sprint 2)
+- Browser berbasis Chromium: Microsoft Edge, Google Chrome, Chromium, Brave, atau Vivaldi, di Windows, macOS,
+  atau Linux (lihat [Memilih browser](#memilih-browser)). Firefox dan Safari tidak didukung.
 
 ## Mulai cepat
 
@@ -245,6 +294,30 @@ Perintah sesi lainnya: `sessions` (daftar sesi beserta hasil pengecekan nyata te
 
 Atur berapa lama login disimpan dengan `--keep 1d | 3d | 7d | 30d | forever` (default `forever`, atau `session.retention`
 di `config.yaml`). Login yang lebih tua dari itu dihapus otomatis.
+
+### Memilih browser
+
+Gateway memakai browser yang sudah terpasang. `bridge browsers` menampilkan browser yang ditemukan dan browser mana
+yang dipakai.
+
+```yaml
+browser:
+  channel: auto        # auto | msedge | chrome | chromium | brave | vivaldi
+  executable_path: ""  # atau path lengkap browser berbasis Chromium lain (mengalahkan channel)
+```
+
+`auto` mencari di lokasi pemasangan yang umum dan memilih dengan urutan: Edge, Chrome, Brave, Vivaldi, Chromium di
+Windows; Chrome, Edge, Brave, Vivaldi, Chromium di macOS (`/Applications` dan `~/Applications`); Chrome, Edge,
+Chromium, Brave, Vivaldi di Linux (`/opt/...` dan nama di `PATH`, seperti `chromium-browser` atau `brave-browser`).
+
+Profil login hanya bisa dipakai oleh browser yang membuatnya: di Windows dan macOS cookie-nya dienkripsi dengan
+kunci milik browser itu. Gateway mencatat browser tersebut di dalam profil (`web-bridge-browser.json`). Kalau
+`config.yaml` kemudian memilih browser lain, gateway berhenti dengan pesan yang jelas, bukan diam-diam kehilangan
+login: kembalikan pilihan browser, atau login ulang dengan `--force`.
+
+Firefox dan Safari tidak didukung: Playwright hanya bisa mengendalikan versi khusus miliknya sendiri, bukan yang
+terpasang di komputer. Chromium dari snap di Linux mungkin tidak bisa menulis profil di luar folder home; simpan
+`data_dir` di dalam folder home, atau pakai paket `.deb`/`.rpm` browser tersebut.
 
 ### Menjaga login tetap hidup
 
@@ -316,6 +389,28 @@ tetap memakainya; mode yang lebih ringan dicoba lagi tiap 10 menit. `bridge stat
 - **Tool:** web chat tidak punya API tool, jadi gateway menirunya. Bila request berisi `tools`, gateway memberi tahu model lewat prompt cara menulis panggilan (`<tool_call>{...}</tool_call>`), membaca panggilan itu dari balasan, lalu mengembalikannya sebagai jawaban `tool_calls` / `tool_use` biasa. Hasil yang dikirim balik klien melanjutkan web chat yang sama, dan hanya hasilnya yang dikirim. Lihat batasannya di bawah.
 - **Jawaban lambat:** web chat bisa butuh semenit sebelum kata pertama. Setelah 20 detik tanpa kata pertama, gateway tetap membuka stream dan mengirim komentar SSE (`: keep-alive`) tiap 15 detik, karena sebagian klien (9router menunggu header respons 60 detik) kalau tidak akan menyerah lalu mengirim ulang request yang sama. Error yang terjadi lebih awal dijawab dengan status HTTP biasa; yang terjadi kemudian datang sebagai event error di dalam stream. Setiap request dicatat di log beserta rincian waktunya (menunggu, balasan pertama, total, chat baru atau lanjutan).
 - Di mode A dan B model dipilih per request dan pilihan model tersimpan di akun Anda tidak disentuh. Mode C mengubah pemilih model akun Anda selama bekerja, lalu mengembalikannya.
+
+## Claude
+
+```bash
+node dist/cli.js login claude
+```
+
+Lalu isi `providers.claude.enabled: true`. Model: `claude/sonnet` (bawaan), `claude/opus`, `claude/haiku`. Baru
+Sonnet 5.5 yang terlihat di lalu lintas halaman; dua lainnya memakai pola nama yang sama dan belum diuji (paket yang
+tidak punya akses ke model itu seharusnya mendapat galat HTTP 400; belum pernah terlihat).
+
+- Hanya mode B: request dikirim dari dalam halaman claude.ai di profil browser akun itu sendiri, jadi login harus
+  dipegang profil tersebut (`session.hold_in_browser: true`, bawaan). claude.ai dilindungi Cloudflare, jadi tidak ada
+  mode HTTP biasa. Kalau Cloudflare menampilkan pemeriksaan bot, request gagal dengan HTTP 503; gateway tidak mencoba
+  melewatinya.
+- Connector dan tool server milik akun (dokumen, pencarian web, widget) tidak dikirim, jadi model tidak bisa bertindak
+  atas akun dengan sendirinya. Tool calling untuk klien seperti Hermes ditiru oleh gateway, sama seperti Gemini.
+- Riwayat dari 9router yang terus bertambah melanjutkan chat claude.ai yang sama (hanya pesan baru yang dikirim).
+- Kuota yang dilaporkan claude.ai setelah tiap jawaban ditulis di log (`quota used 5h 7% / 7d 0%`) dan ditampilkan
+  `bridge status`. Kalau batas pemakaian tercapai, request gagal dengan HTTP 429.
+- `effort` (`low | medium | high | default`, bawaan `medium`) diteruskan seperti yang dikirim halaman.
+- Belum ada: menghapus chat yang dibuat gateway, kunjungan keep-alive untuk login Claude, lampiran.
 
 ## Keterbatasan
 

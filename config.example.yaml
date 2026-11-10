@@ -20,8 +20,9 @@ session:
                              # (override per login with: bridge login <provider> --keep 7d)
 
 browser:
-  channel: auto          # auto | msedge | chrome  (uses the browser already installed)
-  executable_path: ""    # optional: full path to a Chromium-based browser
+  channel: auto          # auto | msedge | chrome | chromium | brave | vivaldi  (uses a browser already installed;
+                         #   run "bridge browsers" to see what was found)
+  executable_path: ""    # optional: full path to any other Chromium-based browser (wins over channel)
   idle_timeout: 300      # seconds before an idle background browser is closed
   held_headless: true    # browser of a held login runs without a window; false = off-screen window (try if headless gets logged out)
   block_resources:       # never downloaded in the background browser (saves RAM/bandwidth)

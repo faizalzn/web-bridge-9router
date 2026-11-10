@@ -57,7 +57,8 @@ export async function interactiveLogin(
 ): Promise<StoredSession> {
   const held = config.session.holdInBrowser;
   const profile = held ? heldProfileDir(config.dataDir, spec.id, account) : undefined;
-  const ctx = await launchBrowser(config.browser, config.dataDir, { headless: false, profile });
+  // A new login may take over a profile another browser made: its old cookies are cleared below anyway.
+  const ctx = await launchBrowser(config.browser, config.dataDir, { headless: false, profile, adoptProfile: true });
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 

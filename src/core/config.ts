@@ -6,7 +6,7 @@ import { isLogLevel, type LogLevel } from './logger.ts';
 
 export interface ProviderConfig { enabled: boolean; [key: string]: unknown }
 
-export type BrowserChannel = 'auto' | 'msedge' | 'chrome';
+export type BrowserChannel = 'auto' | 'msedge' | 'chrome' | 'chromium' | 'brave' | 'vivaldi';
 export type BlockableResource = 'image' | 'font' | 'media' | 'stylesheet';
 
 export interface BrowserConfig {
@@ -74,7 +74,9 @@ export function loadConfig(explicitPath?: string): Config {
   }
 
   const channel = raw.browser?.channel ?? 'auto';
-  if (!['auto', 'msedge', 'chrome'].includes(channel)) throw new Error(`Invalid browser.channel: ${channel}`);
+  if (!['auto', 'msedge', 'chrome', 'chromium', 'brave', 'vivaldi'].includes(channel)) {
+    throw new Error(`Invalid browser.channel: ${channel} (auto | msedge | chrome | chromium | brave | vivaldi)`);
+  }
   const idleTimeout = Number(raw.browser?.idle_timeout ?? 300);
   if (!Number.isFinite(idleTimeout) || idleTimeout < 10) throw new Error('browser.idle_timeout must be >= 10 seconds');
   const blockResources = raw.browser?.block_resources ?? ['image', 'font', 'media'];
