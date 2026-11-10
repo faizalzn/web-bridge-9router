@@ -36,6 +36,14 @@ export class ProviderRegistry {
 
   /** Accepts "provider/model", "provider@account/model", or a bare provider id (its first model). */
   resolve(model: string): { provider: Provider; localId: string; account?: string } {
+    // Some clients do not allow "/" in model names: accept "claude-sonnet" for "claude/sonnet".
+    if (!model.includes('/') && !this.providers.has(model.split('@')[0]!)) {
+      for (const p of this.list()) {
+        if (!model.startsWith(`${p.id}-`)) continue;
+        const local = model.slice(p.id.length + 1);
+        if (p.listModels().some((m) => m.id === local)) return { provider: p, localId: local };
+      }
+    }
     const slash = model.indexOf('/');
     const head = slash === -1 ? model : model.slice(0, slash);
     const [providerId = '', account] = head.split('@');

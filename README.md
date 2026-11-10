@@ -120,9 +120,10 @@ Add a custom provider in 9router:
 |---|---|---|
 | Base URL | `http://127.0.0.1:8787/v1` | `http://127.0.0.1:8787` |
 | API key | the `api_key` from `config.yaml` | the same |
-| Model | e.g. `gemini/flash-lite`, `gemini/pro`, `gemini/argon` | the same |
+| Model | e.g. `gemini/flash-lite`, `gemini/pro`, `claude/sonnet` | the same |
 
-The base URL works with or without `/v1`. Run `bridge models` to list the model ids. The same endpoint also works in
+The base URL works with or without `/v1`. Run `bridge models` to list the model ids. Clients that do not allow `/`
+in a model name can use `-` instead: `claude-sonnet` means `claude/sonnet`. The same endpoint also works in
 any other tool that accepts a custom OpenAI or Anthropic base URL (VS Code extensions, Open WebUI, SDKs, ...).
 
 ## Gemini

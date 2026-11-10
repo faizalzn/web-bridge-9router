@@ -188,6 +188,8 @@ async function run(provider, req) {
   r.add(new ClaudeProvider({ enabled: true }, deps(), fake([])));
   assert.deepEqual(r.models().map((m) => m.id), ['claude/sonnet', 'claude/opus', 'claude/haiku']);
   assert.equal(r.resolve('claude').localId, 'sonnet');
+  assert.equal(r.resolve('claude-haiku').localId, 'haiku'); // clients that do not allow "/" in model names
+  assert.throws(() => r.resolve('claude-3-haiku-20240307'), /Unknown model/);
   assert.throws(() => new ClaudeProvider({ enabled: true, effort: 'max' }, deps(), fake([])), /effort/);
   ok('registry: claude/sonnet, claude/opus, claude/haiku; sonnet is the default; bad effort is refused');
 }
