@@ -352,9 +352,10 @@ Tambahkan custom provider di 9router:
 |---|---|---|
 | Base URL | `http://127.0.0.1:8787/v1` | `http://127.0.0.1:8787` |
 | API key | `api_key` dari `config.yaml` | sama |
-| Model | misalnya `gemini/flash-lite`, `gemini/pro`, `gemini/argon` | sama |
+| Model | misalnya `gemini/flash-lite`, `gemini/pro`, `claude/sonnet` | sama |
 
-Base URL bisa ditulis dengan atau tanpa `/v1`. Jalankan `bridge models` untuk melihat daftar model. Endpoint yang sama
+Base URL bisa ditulis dengan atau tanpa `/v1`. Jalankan `bridge models` untuk melihat daftar model. Klien yang tidak
+mengizinkan `/` di nama model boleh memakai `-`: `claude-sonnet` berarti `claude/sonnet`. Endpoint yang sama
 juga bisa dipakai di alat lain yang menerima base URL OpenAI atau Anthropic kustom (ekstensi VS Code, Open WebUI, SDK, dan lain-lain).
 
 ## Gemini
