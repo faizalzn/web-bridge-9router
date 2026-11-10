@@ -1,0 +1,50 @@
+# web-bridge-9router configuration
+# Copy to config.yaml (or run `bridge init`, which also generates an API key).
+
+server:
+  host: 127.0.0.1        # keep 127.0.0.1 unless 9router runs on another machine
+  port: 8787
+  api_key: ""            # 9router sends this as the provider API key; empty = no auth
+
+log_level: info          # debug | info | warn | error
+
+data_dir: ./data         # sessions (encrypted), key and browser profile; keep it private
+
+session:
+  keep_alive: true           # refresh cookies in the background while `bridge start` runs (recommended)
+  keep_alive_interval: 540   # seconds between refreshes
+  hold_in_browser: true      # each login stays in its own browser profile (data/profiles/<provider>-<account>);
+                             # requests and keep-alive then go through that browser (mode B), not plain HTTP.
+                             # false = old behaviour: only a copy of the cookies is kept (Gemini drops it after ~2 h)
+  retention: forever         # delete saved logins after: forever | 1d | 3d | 7d | 30d
+                             # (override per login with: bridge login <provider> --keep 7d)
+
+browser:
+  channel: auto          # auto | msedge | chrome  (uses the browser already installed)
+  executable_path: ""    # optional: full path to a Chromium-based browser
+  idle_timeout: 300      # seconds before an idle background browser is closed
+  held_headless: true    # browser of a held login runs without a window; false = off-screen window (try if headless gets logged out)
+  block_resources:       # never downloaded in the background browser (saves RAM/bandwidth)
+    - image
+    - font
+    - media
+
+providers:
+  echo:                  # test provider, replies with your own message
+    enabled: true
+  gemini:                # Google Gemini through your web login (bridge login gemini)
+    enabled: true
+    # All options below are optional; these are the defaults.
+    # mode: auto               # auto | A | B | C. auto = lightest working mode, switches by itself
+    #                          #   A = plain HTTP (no browser), B = request sent from a real page, C = typing in the web UI
+    # reuse_chats: true        # continue the same web chat when 9router resends a longer history
+    # auto_delete_chats: false # delete the chats this gateway creates from your Gemini history
+    # chat_ttl: 600            # seconds a chat may sit idle before it is forgotten (and deleted if auto_delete_chats)
+    # min_interval: 1.5        # seconds between two requests to the same account
+    # jitter: 1.5              # extra random seconds, so requests are not evenly spaced
+    # max_waiting: 10          # requests allowed to queue per account before answering 429
+    # max_wait: 180            # seconds a request may wait for its turn
+  # claude:              # Sprint 5
+  #   enabled: true
+  # chatgpt:             # Sprint 5
+  #   enabled: true

@@ -1,0 +1,34 @@
+{
+  "name": "web-bridge-9router",
+  "version": "0.1.0",
+  "description": "Lightweight gateway that exposes web-based LLM chats (Gemini, Claude, ChatGPT, ...) as OpenAI- and Anthropic-compatible endpoints for 9router.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "bridge": "dist/cli.js",
+    "web-bridge-9router": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "config.example.yaml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/cli.ts start",
+    "start": "node dist/cli.js start",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node tests/unit.mjs && node tests/test-cookies.mjs && node tests/pipeline-test.mjs && node tests/provider-test.mjs && node tests/tools-test.mjs && node tests/tools-flow-test.mjs && node tests/server-test.mjs && node tests/held-test.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3"
+  }
+}

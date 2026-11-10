@@ -1,0 +1,12 @@
+node_modules/
+dist/
+config.yaml
+profiles/
+data/
+*.log
+
+# Catatan belajar pribadi (tidak ikut repo)
+docs/CATATAN-BELAJAR.md
+
+# Laporan progres (rahasia)
+docs/PROGRES-*.md
