@@ -30,6 +30,7 @@ export async function verifyLogin(
 ): Promise<{ ok: boolean; cookies: Cookie[]; why: string }> {
   const v = spec.verify;
   if (!v) throw new Error(`No login check is available for ${spec.id} yet`);
+  if (v.inPage) throw new Error(`${spec.name} can only be checked from its page in a browser (log in with session.hold_in_browser on)`);
   const res = await httpRequest(v.url, {
     compress: true,
     timeoutMs: 30_000,

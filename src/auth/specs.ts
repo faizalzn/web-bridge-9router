@@ -6,6 +6,11 @@ export interface VerifySpec {
   /** Regex source: the session counts as logged in when the (decoded) response body matches. */
   loggedIn: string;
   headers?: Record<string, string>;
+  /**
+   * Fetch `url` from inside the provider's own page in the account's browser profile instead of over plain HTTP
+   * (for sites behind Cloudflare). Such a login can only be checked when it is held in a browser profile.
+   */
+  inPage?: boolean;
 }
 
 export interface AuthSpec {
@@ -49,7 +54,8 @@ export const AUTH_SPECS: Record<string, AuthSpec> = {
     homeUrl: 'https://claude.ai/new',
     domains: ['claude.ai'],
     cookies: ['sessionKey'],
-    // verify: added together with the Claude adapter (Sprint 5)
+    // The page's own API lists the account's organizations only for a logged-in user.
+    verify: { url: 'https://claude.ai/api/organizations', loggedIn: '"uuid"\\s*:\\s*"[0-9a-f-]{36}"', inPage: true },
   },
   chatgpt: {
     id: 'chatgpt',
