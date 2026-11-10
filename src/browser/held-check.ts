@@ -4,8 +4,11 @@ import type { BrowserManager } from './manager.ts';
 /** Time the page stays open after loading, so its own scripts can refresh the login cookies like an open tab. */
 const SETTLE_MS = 6000;
 
-/** Cloudflare's challenge page; seeing it means "could not tell", never "logged out". */
-const CHALLENGE = /cf-chl|challenge-platform|Just a moment\.\.\./i;
+/**
+ * Cloudflare's challenge page; seeing it means "could not tell", never "logged out". Normal pages also load a
+ * script from /cdn-cgi/challenge-platform/, so only markers of the interstitial page itself count.
+ */
+const CHALLENGE = /<title>\s*Just a moment\.\.\.\s*<\/title>|window\._cf_chl_opt|id="challenge-form"/i;
 
 /**
  * Login check and keep-alive for a held login: opens the provider's page in the account's own profile, as a

@@ -85,6 +85,7 @@ const STREAM = [
   assert.equal(kind(429, JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: JSON.stringify({ type: 'exceeded_limit', resetsAt: 1794337800 }) } })), 'rate_limit');
   assert.match(errorFromBody(429, JSON.stringify({ error: { type: 'rate_limit_error', message: JSON.stringify({ resetsAt: 1794337800 }) } })).message, /resets 20/);
   assert.equal(kind(403, '<html><title>Just a moment...</title><script src="/cdn-cgi/challenge-platform/x"></script></html>'), 'blocked');
+  assert.notEqual(kind(200, '<html><head><title>Claude</title><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></head></html>'), 'blocked');
   assert.equal(kind(403, JSON.stringify({ error: { type: 'permission_error', message: 'Invalid authorization' } })), 'auth');
   assert.equal(kind(401, '{}'), 'auth');
   assert.equal(kind(400, JSON.stringify({ error: { type: 'invalid_request_error', message: 'Invalid model: claude-x' } })), 'bad_model');

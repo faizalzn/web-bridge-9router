@@ -7,6 +7,12 @@ import { randomUUID } from 'node:crypto';
 
 export const CLAUDE_ORIGIN = 'https://claude.ai';
 
+/**
+ * Cloudflare's challenge interstitial. Normal claude.ai pages also load a script from /cdn-cgi/challenge-platform/,
+ * so that path alone is not a sign of a check.
+ */
+export const CF_CHALLENGE = /<title>\s*Just a moment\.\.\.\s*<\/title>|window\._cf_chl_opt|id="challenge-form"/i;
+
 export type ClaudeErrorKind = 'auth' | 'rate_limit' | 'blocked' | 'bad_model' | 'temporary' | 'protocol';
 
 export class ClaudeError extends Error {
@@ -145,7 +151,7 @@ export class ClaudeStreamParser {
 
 /** Maps a non-200 answer (or an error event) of the completion endpoint to an error kind. */
 export function errorFromBody(status: number, text: string): ClaudeError {
-  if (/cf-chl|challenge-platform|Just a moment\.\.\./i.test(text)) {
+  if (CF_CHALLENGE.test(text)) {
     return new ClaudeError('blocked', `claude.ai answered with a Cloudflare bot check (HTTP ${status}); the gateway does not try to get past it`);
   }
   let type = '';

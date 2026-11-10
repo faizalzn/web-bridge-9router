@@ -3,7 +3,7 @@ import type { StoredSession } from '../../auth/session-store.ts';
 import type { BrowserManager } from '../../browser/manager.ts';
 import { Channel } from '../../core/channel.ts';
 import {
-  buildCompletion, CLAUDE_ORIGIN, ClaudeError, ClaudeStreamParser, errorFromBody,
+  buildCompletion, CF_CHALLENGE, CLAUDE_ORIGIN, ClaudeError, ClaudeStreamParser, errorFromBody,
   type ClaudeConv, type ClaudeUpdate,
 } from './protocol.ts';
 
@@ -41,7 +41,7 @@ export class ClaudePageTransport implements ClaudeTransport {
       if (stop) return;
       const res = await p.goto(HOME, { waitUntil: 'domcontentloaded', timeout: 45_000 });
       const html = await p.content().catch(() => '');
-      if (/cf-chl|challenge-platform|Just a moment\.\.\./i.test(html)) throw errorFromBody(res?.status() ?? 0, html);
+      if (CF_CHALLENGE.test(html)) throw errorFromBody(res?.status() ?? 0, html);
       if (new URL(p.url()).pathname.startsWith('/login')) throw new ClaudeError('auth', 'claude.ai shows its login page in the browser');
 
       let org = this.orgs.get(key);
