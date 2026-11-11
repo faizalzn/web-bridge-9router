@@ -218,11 +218,18 @@ node dist/cli.js login chatgpt
 
 Then set `providers.chatgpt.enabled: true`. One model: `chatgpt/auto` (whatever model the web app is set to).
 
+> **⚠️ ChatGPT is best-effort, not dependable.** chatgpt.com defends its web app in three layers (Cloudflare, a
+> page-generated proof-of-work, and a session that does not hold in an automated browser), so ChatGPT answers only
+> briefly right after a hand-login and then the session goes `guest`. For real use, prefer the **official OpenAI API**
+> (9router supports it directly). See [docs/TEMUAN-KEAMANAN.md](docs/TEMUAN-KEAMANAN.md) for the details.
+
 - **Mode C only (the page is typed into, not called).** chatgpt.com protects its message endpoint with a
   page-generated proof-of-work (the "sentinel" challenge) on top of Cloudflare. The gateway will **not** forge that
   token, so there is no request mode: instead the prompt is typed into the real composer and the answer is read from
   the page, exactly as a person does. The page computes its own proof-of-work legitimately.
-- Needs the login held by its browser profile (`session.hold_in_browser: true`, the default).
+- Needs the login held by its browser profile (`session.hold_in_browser: true`, the default). **The login does not
+  persist well:** ChatGPT invalidates the held session after a while (it reads back as a `guest` account), so expect
+  to re-log in and use it soon after — this is ChatGPT's anti-automation, which the gateway does not try to defeat.
 - Every request is a fresh chat (no continuation), and it is slower than a request-based mode.
 - If Cloudflare shows a bot check, the request fails with 503 and the account is paused (10 min, doubling up to 1 h;
   `bot_check_pause`), like Claude. The gateway does not try to get past the check.
@@ -230,6 +237,12 @@ Then set `providers.chatgpt.enabled: true`. One model: `chatgpt/auto` (whatever 
 
 ## Known limitations
 
+- **Each provider's web app resists automated use, and the gateway respects that** — it drives only the real page in
+  your own profile and stops at every bot check, proof-of-work or attestation token rather than forging anything.
+  What this means per provider (Gemini's Flash attestation, Claude's account-scoped Cloudflare check, ChatGPT's
+  three-layer defence and non-persistent session) is written up in [docs/TEMUAN-KEAMANAN.md](docs/TEMUAN-KEAMANAN.md).
+  The short version: Gemini (incl. Plus) and Claude (incl. Pro) are dependable; **ChatGPT is best-effort only** — use
+  the official OpenAI API for real ChatGPT work.
 - Tool calling is emulated in text, so it is less reliable than a real API. Two measurements with the Argon model: in a small isolated test with a bare prompt (six prompts, one try each, repeated a few times) the model answered with a valid call for roughly half to two thirds of the requests that needed one; in real use through Hermes, 12 simple task prompts (list a folder, create, read and edit a file, run a command, search the web) were all completed. When the model skips a call it describes the action or pastes code instead, and the client sees a plain text answer; asking again usually helps. Both samples are small, the tasks were simple, and Flash and Pro were not measured.
 - Whatever the model writes after a tool call is dropped (it would be a guess of the result). A call with invalid JSON or an unknown tool name is shown as text and never executed.
 - Images and files in a request are ignored. `max_tokens` and `temperature` cannot be set on a web chat.
@@ -268,7 +281,9 @@ bridge gui install | uninstall                  (Sprint 7)
    session durability and chat deletion still need a clean multi-hour verification.
 4. 🟡 Emulated tool calling. Working and tested with a mock provider and live on Gemini; reliability depends on the model (see Known limitations).
 5. 🟡 Claude adapter (claude.ai, mode B) and ChatGPT adapter (chatgpt.com, mode C): first real answers 10–11 Nov
-   2026. Simultaneous multi-account. Choice of browser on Windows, macOS and Linux.
+   2026. Simultaneous multi-account (Free and Pro side by side). Per-request Claude reasoning effort via a model
+   suffix. Choice of browser on Windows, macOS and Linux. ChatGPT is best-effort only (its session does not persist —
+   see [docs/TEMUAN-KEAMANAN.md](docs/TEMUAN-KEAMANAN.md)).
 6. Automatic manifest updates and app update notices
 7. Optional web GUI, downloaded from GitHub Releases
 8. More providers and full documentation
@@ -496,11 +511,18 @@ node dist/cli.js login chatgpt
 
 Lalu isi `providers.chatgpt.enabled: true`. Satu model: `chatgpt/auto` (model apa pun yang sedang dipilih di web).
 
+> **⚠️ ChatGPT best-effort, tidak andal.** chatgpt.com bertahan dalam tiga lapis (Cloudflare, proof-of-work
+> buatan-halaman, dan sesi yang tidak bertahan di browser otomatis), jadi ChatGPT hanya menjawab sebentar tepat
+> setelah login manual lalu sesinya jadi `guest`. Untuk pemakaian nyata, pakai **API resmi OpenAI** (didukung 9router
+> langsung). Rincian di [docs/TEMUAN-KEAMANAN.md](docs/TEMUAN-KEAMANAN.md).
+
 - **Hanya mode C (halaman diketik, bukan dipanggil).** chatgpt.com melindungi endpoint pesannya dengan
   proof-of-work buatan halaman (tantangan "sentinel") di atas Cloudflare. Gateway **tidak** memalsukan token itu,
   jadi tidak ada mode request: prompt diketik di kotak chat asli dan jawaban dibaca dari halaman, persis seperti
   orang. Halaman menghitung proof-of-work-nya sendiri secara wajar.
-- Perlu login yang dipegang profil browser (`session.hold_in_browser: true`, bawaan).
+- Perlu login yang dipegang profil browser (`session.hold_in_browser: true`, bawaan). **Login tidak bertahan lama:**
+  ChatGPT menonaktifkan sesi yang dipegang setelah beberapa saat (terbaca kembali sebagai akun `guest`), jadi
+  harapannya login ulang dan segera dipakai — ini anti-otomasi ChatGPT, yang tidak coba gateway lewati.
 - Tiap request adalah chat baru (tanpa lanjutan), dan lebih lambat daripada mode berbasis request.
 - Kalau Cloudflare menampilkan pemeriksaan bot, request gagal 503 dan akun dijeda (10 menit, berlipat sampai 1 jam;
   `bot_check_pause`), seperti Claude. Gateway tidak mencoba melewatinya.
@@ -508,6 +530,12 @@ Lalu isi `providers.chatgpt.enabled: true`. Satu model: `chatgpt/auto` (model ap
 
 ## Keterbatasan
 
+- **Setiap aplikasi web provider menahan pemakaian otomatis, dan gateway menghormatinya** — hanya menggerakkan halaman
+  asli di profil Anda dan berhenti di setiap pemeriksaan bot, proof-of-work, atau token atestasi, tanpa memalsukan
+  apa pun. Rincian per provider (atestasi Flash di Gemini, pemeriksaan Cloudflare Claude yang terikat-akun, pertahanan
+  tiga-lapis ChatGPT dan sesinya yang tidak bertahan) ada di [docs/TEMUAN-KEAMANAN.md](docs/TEMUAN-KEAMANAN.md).
+  Singkatnya: Gemini (termasuk Plus) dan Claude (termasuk Pro) andal; **ChatGPT hanya best-effort** — pakai API resmi
+  OpenAI untuk pemakaian ChatGPT yang sungguhan.
 - Tool calling ditiru lewat teks, sehingga kurang andal dibanding API sungguhan. Dua pengukuran dengan model Argon: pada uji terisolasi kecil dengan prompt polos (enam prompt, satu percobaan tiap prompt, diulang beberapa kali) model menjawab dengan panggilan valid pada kira-kira separuh sampai dua pertiga request yang membutuhkannya; pada pemakaian nyata lewat Hermes, 12 tugas sederhana (melihat isi folder, membuat, membaca, dan mengubah file, menjalankan perintah, mencari di web) semuanya selesai. Bila model melewatkan panggilan, ia menjelaskan tindakannya atau menempelkan kode, dan klien melihat jawaban teks biasa; meminta ulang biasanya membantu. Kedua sampel kecil, tugasnya sederhana, dan Flash serta Pro belum diukur.
 - Apa pun yang ditulis model setelah panggilan tool dibuang (isinya hanya tebakan hasil). Panggilan dengan JSON tidak valid atau nama tool yang tidak dikenal ditampilkan sebagai teks dan tidak pernah dijalankan.
 - Gambar dan file dalam request diabaikan. `max_tokens` dan `temperature` tidak bisa diatur pada web chat.
