@@ -26,6 +26,8 @@ export const CLAUDE_MODELS: ClaudeModel[] = [
 const EFFORTS = ['low', 'medium', 'high', 'extra'];
 /** Effort a caller may pin per request via the model suffix, plus "auto" (let Claude decide, send no effort field). */
 const REQUEST_EFFORTS = ['auto', ...EFFORTS];
+/** The friendly effort names map 1:1 to the page's wire values, except "Extra", which the page sends as "xhigh". */
+const EFFORT_WIRE: Record<string, string> = { low: 'low', medium: 'medium', high: 'high', extra: 'xhigh' };
 
 /** Splits "opus:high" into its base model id and an optional per-request effort. "opus" -> no effort override. */
 function splitEffort(localId: string): { base: string; effort?: string } {
@@ -130,7 +132,8 @@ export class ClaudeProvider implements Provider {
     }
     if (model.unavailable) throw new BridgeError('unavailable', `${model.name} is not available through the gateway: ${model.unavailable}`);
     // No suffix -> the configured default effort. ":auto" -> send no effort (Claude decides). Else the pinned effort.
-    const effort = override === undefined ? this.opts.effort : override === 'auto' ? undefined : override;
+    const chosen = override === undefined ? this.opts.effort : override === 'auto' ? undefined : override;
+    const effort = chosen === undefined ? undefined : (EFFORT_WIRE[chosen] ?? chosen); // "extra" -> the page's "xhigh"
     await this.ensureLogin(account);
     const pause = this.paused.get(account);
     if (pause && Date.now() < pause.until) {
@@ -227,7 +230,7 @@ export class ClaudeProvider implements Provider {
       release();
       if (limit) this.limits.set(account, limit);
       const outcome = ok ? 'ok' : signal.aborted ? 'client gave up' : 'failed';
-      logger.info(`claude ${model.id} (effort ${effort ?? (override === 'auto' ? 'auto' : 'default')}): ${hit ? 'continued chat' : 'new chat'}, prompt ${prompt.length} chars, waited ${sec(started - asked)}, `
+      logger.info(`claude ${model.id} (effort ${override === 'auto' ? 'auto' : chosen ?? 'default'}): ${hit ? 'continued chat' : 'new chat'}, prompt ${prompt.length} chars, waited ${sec(started - asked)}, `
         + `first reply ${firstMs === null ? 'never' : sec(firstMs)}, total ${sec(Date.now() - started)}, mode B, ${outcome}`
         + (limit ? `, quota used 5h ${pct(limit.fiveHour)} / 7d ${pct(limit.sevenDay)}` : ''));
     }

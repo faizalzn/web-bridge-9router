@@ -250,7 +250,7 @@ async function run(provider, req) {
   assert.throws(() => r.resolve('claude/opus:turbo'), /Unknown model|no model/);
 
   // ":high" is sent as effort high; ":auto" sends no effort; no suffix uses the configured default
-  const t = fake([{ text: ['a'] }, { text: ['b'] }, { text: ['c'] }]);
+  const t = fake([{ text: ['a'] }, { text: ['b'] }, { text: ['c'] }, { text: ['d'] }]);
   const p = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0, effort: 'low' }, deps(), t);
   await run(p, { model: 'opus:high', messages: [user('x')] });
   assert.equal(t.calls[0].model, 'claude-opus-5-5'); assert.equal(t.calls[0].effort, 'high');
@@ -258,6 +258,8 @@ async function run(provider, req) {
   assert.equal(t.calls[1].effort, undefined);
   await run(p, { model: 'opus', messages: [user('z')] });
   assert.equal(t.calls[2].effort, 'low'); // the provider's configured default
+  await run(p, { model: 'opus:extra', messages: [user('w')] });
+  assert.equal(t.calls[3].effort, 'xhigh'); // "extra" is sent as the page's wire value "xhigh"
   // a bad effort suffix is a 404 that names the valid forms
   await assert.rejects(run(p, { model: 'opus:turbo', messages: [user('x')] }),
     (e) => e instanceof BridgeError && e.status === 404 && /opus:auto[\s\S]*opus:extra/.test(e.message));
