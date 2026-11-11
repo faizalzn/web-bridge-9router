@@ -64,6 +64,27 @@ Other session commands: `sessions` (list, with the result of the last real check
 Choose how long a login is kept with `--keep 1d | 3d | 7d | 30d | forever` (default `forever`, or `session.retention`
 in `config.yaml`). A login older than that is deleted automatically.
 
+### Several accounts at once
+
+Each provider can hold more than one login at the same time. Give every extra login a name with `--account`:
+
+```bash
+node dist/cli.js login claude                     # the "default" account
+node dist/cli.js login claude --account work      # a second account, its own browser profile
+```
+
+Both stay online together: each account keeps its own browser profile (`data/profiles/<provider>-<account>`), its
+own request queue (so a slow request on one does not block the other), and its own keep-alive. Address an extra
+account in the model id with `@`:
+
+```
+claude/sonnet          # the default account
+claude@work/sonnet     # the "work" account
+```
+
+`bridge sessions` lists every account and its state. This is the way around a single account's usage limit: put a
+second login behind another model id and point some clients at it.
+
 ### Choosing a browser
 
 The gateway drives a browser that is already installed. `bridge browsers` lists what it found and which one it uses.
@@ -298,6 +319,27 @@ Perintah sesi lainnya: `sessions` (daftar sesi beserta hasil pengecekan nyata te
 
 Atur berapa lama login disimpan dengan `--keep 1d | 3d | 7d | 30d | forever` (default `forever`, atau `session.retention`
 di `config.yaml`). Login yang lebih tua dari itu dihapus otomatis.
+
+### Beberapa akun sekaligus
+
+Tiap provider bisa memegang lebih dari satu login sekaligus. Beri nama tiap login tambahan dengan `--account`:
+
+```bash
+node dist/cli.js login claude                     # akun "default"
+node dist/cli.js login claude --account work      # akun kedua, profil browser sendiri
+```
+
+Keduanya tetap online bersamaan: tiap akun punya profil browser sendiri (`data/profiles/<provider>-<account>`),
+antrean request sendiri (jadi request lambat di satu akun tidak menahan yang lain), dan keep-alive sendiri. Sebut
+akun tambahan di nama model dengan `@`:
+
+```
+claude/sonnet          # akun default
+claude@work/sonnet     # akun "work"
+```
+
+`bridge sessions` menampilkan tiap akun dan statusnya. Ini cara menyiasati batas pemakaian satu akun: taruh login
+kedua di belakang nama model lain, lalu arahkan sebagian klien ke sana.
 
 ### Memilih browser
 

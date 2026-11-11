@@ -21,7 +21,7 @@
     "start": "node dist/cli.js start",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsc && node tests/unit.mjs && node tests/test-cookies.mjs && node tests/pipeline-test.mjs && node tests/provider-test.mjs && node tests/tools-test.mjs && node tests/tools-flow-test.mjs && node tests/server-test.mjs && node tests/held-test.mjs && node tests/claude-test.mjs && node tests/browsers-test.mjs"
+    "test": "tsc && node tests/unit.mjs && node tests/test-cookies.mjs && node tests/pipeline-test.mjs && node tests/provider-test.mjs && node tests/tools-test.mjs && node tests/tools-flow-test.mjs && node tests/server-test.mjs && node tests/held-test.mjs && node tests/claude-test.mjs && node tests/browsers-test.mjs && node tests/multiaccount-test.mjs"
   },
   "dependencies": {
     "playwright-core": "^1.65.0",
