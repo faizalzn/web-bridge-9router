@@ -107,6 +107,13 @@ export class ClaudeProvider implements Provider {
     const conv: ClaudeConv | null = hit ? { chat: hit.ref.chat, parent: hit.ref.parent } : null;
     const prompt = hit ? buildContinuationPrompt(req.messages.slice(hit.consumed)) : buildFreshPrompt(req.system, req.messages);
     if (!prompt.trim()) throw new BridgeError('invalid_request', 'The request has no text to send');
+    if (!hit && this.opts.reuseChats) {
+      const why = this.cache.explainMiss(scope, req.system, req.messages);
+      if (why) {
+        logger.info(`claude ${model.id}: earlier chat not continued: ${why.reason}`);
+        if (why.detail) logger.debug(`claude ${model.id}: difference ${why.detail}`);
+      }
+    }
 
     const asked = Date.now();
     const release = await this.queue.acquire(`claude:${account}`, signal);

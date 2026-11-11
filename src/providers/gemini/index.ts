@@ -146,6 +146,13 @@ export class GeminiProvider implements Provider {
       ? buildContinuationPrompt(req.messages.slice(hit.consumed))
       : buildFreshPrompt(req.system, req.messages);
     if (!prompt.trim()) throw new BridgeError('invalid_request', 'The request has no text to send');
+    if (!hit && this.opts.reuseChats) {
+      const why = this.cache.explainMiss(scope, req.system, req.messages);
+      if (why) {
+        logger.info(`gemini ${model.id}: earlier chat not continued: ${why.reason}`);
+        if (why.detail) logger.debug(`gemini ${model.id}: difference ${why.detail}`);
+      }
+    }
     logger.debug(`gemini ${account}/${model.id}: ${hit ? `continuing chat (${hit.consumed} earlier messages known)` : 'new chat'}`);
 
     const asked = Date.now();

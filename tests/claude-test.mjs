@@ -194,4 +194,22 @@ async function run(provider, req) {
   ok('registry: claude/sonnet, claude/opus, claude/haiku; sonnet is the default; bad effort is refused');
 }
 
+// 9: when a continuation is not recognised, the log can say why
+{
+  const { ConversationCache } = await import(base + 'core/conversation-cache.js');
+  const c = new ConversationCache({ max: 10, ttlMs: 60_000 });
+  const h1 = [user('Buat file'), asst('<tool call>')];
+  c.put('s', 'SYSTEM v1 tools: a, b', h1, 'chat-1');
+  c.put('s', 'Make a short title', [user('Buat file'), asst('Judul')], 'chat-title'); // another conversation in the same scope
+  assert.equal(c.find('s', 'SYSTEM v1 tools: a, b', [...h1, user('result')])?.ref, 'chat-1');
+  const sys = c.explainMiss('s', 'SYSTEM v1 tools: a, b, c', [...h1, user('result')]);
+  assert.match(sys.reason, /system prompt changed \(21 -> 24 chars\)/);
+  assert.match(sys.detail, /at character 21/);
+  const msg = c.explainMiss('s', 'SYSTEM v1 tools: a, b', [user('Buat file'), asst('<tool call, edited>'), user('result')]);
+  assert.match(msg.reason, /message 2 \(assistant\) differs/);
+  assert.equal(c.explainMiss('s', 'SYSTEM v1 tools: a, b', [user('other task'), asst('x'), user('y')]), null);
+  assert.equal(c.explainMiss('s', 'SYSTEM v1 tools: a, b', [user('first message only')]), null);
+  ok('cache: a missed continuation is explained (system prompt changed / which message differs); unrelated chats are not');
+}
+
 console.log(`claude-test: ${n} passed`);

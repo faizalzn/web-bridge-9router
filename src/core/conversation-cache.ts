@@ -42,6 +42,7 @@ export class ConversationCache<T> {
   put(scope: string, system: string | undefined, messages: Message[], ref: T): void {
     const last = this.prefixes(scope, system, messages).at(-1);
     if (!last || last.count !== messages.length) return;
+    this.remember(scope, system, messages);
     this.entries.delete(last.key);
     this.entries.set(last.key, { ref, touched: Date.now() });
     while (this.entries.size > this.max) {
@@ -62,6 +63,52 @@ export class ConversationCache<T> {
       return { ref: hit.ref, consumed: count };
     }
     return null;
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  // Why a history that looks like a continuation was not continued (for the log). Only the last few histories per
+  // scope are kept, as text, in memory.
+
+  private readonly recent = new Map<string, { system: string; lines: string[] }[]>();
+
+  private remember(scope: string, system: string | undefined, messages: Message[]): void {
+    const list = this.recent.get(scope) ?? [];
+    list.unshift({ system: system ?? '', lines: messages.map((m) => ConversationCache.line(system, m)) });
+    this.recent.set(scope, list.slice(0, 20));
+  }
+
+  /**
+   * For a request that carries earlier assistant turns but matched no chat: what differs from the closest history
+   * this cache remembered. `reason` is safe for the info log; `detail` quotes the text around the difference.
+   * Null when nothing related is remembered (a different conversation) or the history only expired.
+   */
+  explainMiss(scope: string, system: string | undefined, messages: Message[]): { reason: string; detail: string } | null {
+    if (!messages.some((m) => m.role === 'assistant')) return null;
+    const sys = system ?? '';
+    const lines = messages.map((m) => ConversationCache.line(system, m));
+    let best: { system: string; lines: string[] } | null = null;
+    let bestCommon = 0;
+    for (const h of this.recent.get(scope) ?? []) {
+      let i = 0;
+      while (i < lines.length && i < h.lines.length && lines[i] === h.lines[i]) i++;
+      if (i > bestCommon || (i === bestCommon && best && best.system !== sys && h.system === sys)) { best = h; bestCommon = i; }
+    }
+    if (!best || bestCommon === 0) return null; // not even the first message is known: another conversation
+    const around = (a: string, b: string): string => {
+      let i = 0;
+      while (i < a.length && i < b.length && a[i] === b[i]) i++;
+      const cut = (s: string) => JSON.stringify(s.slice(Math.max(0, i - 60), i + 60));
+      return `at character ${i}: before ${cut(a)}, now ${cut(b)}`;
+    };
+    if (best.system !== sys) {
+      return { reason: `the system prompt changed (${best.system.length} -> ${sys.length} chars)`, detail: around(best.system, sys) };
+    }
+    if (bestCommon >= best.lines.length) return null; // the remembered chat would match: it expired or was dropped
+    const m = messages[bestCommon];
+    return {
+      reason: m ? `message ${bestCommon + 1} (${m.role}) differs from the remembered chat` : 'the history is shorter than the remembered chat',
+      detail: m ? around(best.lines[bestCommon]!, lines[bestCommon]!) : '',
+    };
   }
 
   /** Drops entries idle for longer than the TTL (and reports them, e.g. to delete the web chat). */
