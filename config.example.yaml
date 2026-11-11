@@ -54,5 +54,8 @@ providers:
     # jitter: 1.5
     # max_waiting: 10
     # max_wait: 180
-  # chatgpt:             # Sprint 5
-  #   enabled: true
+  chatgpt:               # ChatGPT through your chatgpt.com web login (bridge login chatgpt); mode C only
+    enabled: false
+    # bot_check_pause: 600   # after a Cloudflare bot check, pause this account's requests (doubles up to 1 h)
+    # min_interval: 3
+    # jitter: 2

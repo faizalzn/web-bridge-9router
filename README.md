@@ -206,6 +206,24 @@ without access to one should get an HTTP 400 error; not seen yet).
 - `effort` (`low | medium | high | default`, default `medium`) is passed as the page passes it.
 - Not there yet: deleting the chats the gateway creates, a keep-alive visit for Claude logins, attachments.
 
+## ChatGPT
+
+```bash
+node dist/cli.js login chatgpt
+```
+
+Then set `providers.chatgpt.enabled: true`. One model: `chatgpt/auto` (whatever model the web app is set to).
+
+- **Mode C only (the page is typed into, not called).** chatgpt.com protects its message endpoint with a
+  page-generated proof-of-work (the "sentinel" challenge) on top of Cloudflare. The gateway will **not** forge that
+  token, so there is no request mode: instead the prompt is typed into the real composer and the answer is read from
+  the page, exactly as a person does. The page computes its own proof-of-work legitimately.
+- Needs the login held by its browser profile (`session.hold_in_browser: true`, the default).
+- Every request is a fresh chat (no continuation), and it is slower than a request-based mode.
+- If Cloudflare shows a bot check, the request fails with 503 and the account is paused (10 min, doubling up to 1 h;
+  `bot_check_pause`), like Claude. The gateway does not try to get past the check.
+- Picking a specific model, continuing a chat, and attachments are not there yet.
+
 ## Known limitations
 
 - Tool calling is emulated in text, so it is less reliable than a real API. Two measurements with the Argon model: in a small isolated test with a bare prompt (six prompts, one try each, repeated a few times) the model answered with a valid call for roughly half to two thirds of the requests that needed one; in real use through Hermes, 12 simple task prompts (list a folder, create, read and edit a file, run a command, search the web) were all completed. When the model skips a call it describes the action or pastes code instead, and the client sees a plain text answer; asking again usually helps. Both samples are small, the tasks were simple, and Flash and Pro were not measured.
@@ -245,8 +263,8 @@ bridge gui install | uninstall                  (Sprint 7)
 3. 🟡 Gemini adapter (modes A, B and C), automatic mode switching, conversation cache. Working; long-term
    session durability and chat deletion still need a clean multi-hour verification.
 4. 🟡 Emulated tool calling. Working and tested with a mock provider and live on Gemini; reliability depends on the model (see Known limitations).
-5. 🟡 Claude adapter (claude.ai, mode B): first real answers on 10 Nov 2026. Choice of browser on Windows, macOS
-   and Linux. ChatGPT adapter still to do.
+5. 🟡 Claude adapter (claude.ai, mode B) and ChatGPT adapter (chatgpt.com, mode C): first real answers 10–11 Nov
+   2026. Simultaneous multi-account. Choice of browser on Windows, macOS and Linux.
 6. Automatic manifest updates and app update notices
 7. Optional web GUI, downloaded from GitHub Releases
 8. More providers and full documentation
@@ -461,6 +479,24 @@ tidak punya akses ke model itu seharusnya mendapat galat HTTP 400; belum pernah 
   `bridge status`. Kalau batas pemakaian tercapai, request gagal dengan HTTP 429.
 - `effort` (`low | medium | high | default`, bawaan `medium`) diteruskan seperti yang dikirim halaman.
 - Belum ada: menghapus chat yang dibuat gateway, kunjungan keep-alive untuk login Claude, lampiran.
+
+## ChatGPT
+
+```bash
+node dist/cli.js login chatgpt
+```
+
+Lalu isi `providers.chatgpt.enabled: true`. Satu model: `chatgpt/auto` (model apa pun yang sedang dipilih di web).
+
+- **Hanya mode C (halaman diketik, bukan dipanggil).** chatgpt.com melindungi endpoint pesannya dengan
+  proof-of-work buatan halaman (tantangan "sentinel") di atas Cloudflare. Gateway **tidak** memalsukan token itu,
+  jadi tidak ada mode request: prompt diketik di kotak chat asli dan jawaban dibaca dari halaman, persis seperti
+  orang. Halaman menghitung proof-of-work-nya sendiri secara wajar.
+- Perlu login yang dipegang profil browser (`session.hold_in_browser: true`, bawaan).
+- Tiap request adalah chat baru (tanpa lanjutan), dan lebih lambat daripada mode berbasis request.
+- Kalau Cloudflare menampilkan pemeriksaan bot, request gagal 503 dan akun dijeda (10 menit, berlipat sampai 1 jam;
+  `bot_check_pause`), seperti Claude. Gateway tidak mencoba melewatinya.
+- Memilih model tertentu, melanjutkan chat, dan lampiran belum ada.
 
 ## Keterbatasan
 

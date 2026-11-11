@@ -64,7 +64,8 @@ export const AUTH_SPECS: Record<string, AuthSpec> = {
     homeUrl: 'https://chatgpt.com/',
     domains: ['chatgpt.com', 'openai.com'],
     cookies: ['__Secure-next-auth.session-token*'],
-    // verify: added together with the ChatGPT adapter (Sprint 5)
+    // The page API /backend-api/me returns the account only for a logged-in user.
+    verify: { url: 'https://chatgpt.com/backend-api/me', loggedIn: '"id"\\s*:\\s*"user-', inPage: true },
   },
 };
 
