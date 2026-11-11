@@ -31,6 +31,24 @@ async function readState(ctx: BrowserContext, page: Page, spec: AuthSpec, accoun
   return scopeToProvider(spec, account, { cookies: cookies as Cookie[], origins }, userAgent);
 }
 
+/**
+ * For a spec with `verify.inPage`, asks the provider's own API (from inside the page, as its scripts do) whether
+ * the login is real. Returns true only on HTTP 200 with the logged-in marker. Any error, challenge or missing
+ * marker returns false, so login keeps waiting rather than saving an anonymous session. Specs without an in-page
+ * verify are treated as verified by the cookie presence alone (unchanged behaviour).
+ */
+async function inPageVerified(page: Page, spec: AuthSpec): Promise<boolean> {
+  const v = spec.verify;
+  if (!v?.inPage) return true;
+  try {
+    const api = await page.evaluate(async (url) => {
+      const r = await fetch(url, { credentials: 'include', headers: { accept: 'application/json' } });
+      return { status: r.status, text: await r.text() };
+    }, v.url);
+    return api.status === 200 && new RegExp(v.loggedIn).test(api.text);
+  } catch { return false; }
+}
+
 async function clearProviderCookies(ctx: BrowserContext, spec: AuthSpec): Promise<void> {
   for (const d of spec.domains) {
     await ctx.clearCookies({ domain: new RegExp(`(^|\\.)${d.replace(/\./g, '\\.')}$`) });
@@ -76,6 +94,13 @@ export async function interactiveLogin(
         try {
           const s = await readState(ctx, page, spec, account);
           if (hasLoginCookies(spec, s)) {
+            // Some providers (e.g. ChatGPT) set the session cookie before the login is finished, so the saved
+            // session would be anonymous. When the spec can check in-page, wait until the provider's own API
+            // confirms the account before declaring success.
+            if (!(await inPageVerified(page, spec))) {
+              if (manual) console.log('Signed in, but the session is not ready yet. Wait a few seconds, then press Enter again.');
+              return; // keep polling
+            }
             await new Promise((r) => setTimeout(r, SETTLE_MS));
             const settled = await readState(ctx, page, spec, account);
             done(() => resolve(settled));

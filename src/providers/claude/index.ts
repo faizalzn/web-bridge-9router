@@ -23,7 +23,7 @@ export const CLAUDE_MODELS: ClaudeModel[] = [
   { id: 'haiku', name: 'Claude Haiku 5.5', modelId: 'claude-haiku-5-5' },
 ];
 
-const EFFORTS = ['low', 'medium', 'high'];
+const EFFORTS = ['low', 'medium', 'high', 'extra'];
 const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback);
 const accountFlag = (a: string) => (a === DEFAULT_ACCOUNT ? '' : ` --account ${a}`);
 const sec = (ms: number): string => (ms / 1000).toFixed(1) + 's';
@@ -59,7 +59,7 @@ export class ClaudeProvider implements Provider {
   constructor(cfg: ProviderConfig, deps: ProviderDeps, transport?: ClaudeTransport) {
     this.sessions = deps.sessions;
     const effort = typeof cfg.effort === 'string' ? cfg.effort : 'medium';
-    if (effort !== 'default' && !EFFORTS.includes(effort)) throw new Error(`Invalid providers.claude.effort: ${effort} (low | medium | high | default)`);
+    if (effort !== 'default' && !EFFORTS.includes(effort)) throw new Error(`Invalid providers.claude.effort: ${effort} (low | medium | high | extra | default)`);
     this.opts = { effort: effort === 'default' ? undefined : effort, reuseChats: cfg.reuse_chats !== false };
     this.pauseMs = num(cfg.bot_check_pause, 600) * 1000;
     this.transport = transport ?? new ClaudePageTransport(deps.browser ?? new BrowserManager(deps.config));
