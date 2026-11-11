@@ -203,7 +203,11 @@ without access to one should get an HTTP 400 error; not seen yet).
 - 9router's growing history continues the same claude.ai chat (only the new message is sent).
 - The quota claude.ai reports after each answer is logged (`quota used 5h 7% / 7d 0%`) and shown by `bridge status`.
   When the usage limit is reached, requests fail with HTTP 429.
-- `effort` (`low | medium | high | default`, default `medium`) is passed as the page passes it.
+- `effort` (`low | medium | high | extra | default`, default `medium`) sets the account-wide default reasoning
+  effort. A caller can also choose per request with a model suffix: `claude/opus:high`, `claude/opus:extra`,
+  or `claude/opus:auto` (send no effort, let Claude decide). `claude/opus` alone uses the configured default.
+  The suffix forms are not listed in `/v1/models` but are accepted. (`extra` exists on Pro/Max; its exact
+  wire value is not yet confirmed against the live page.)
 - Not there yet: deleting the chats the gateway creates, a keep-alive visit for Claude logins, attachments.
 
 ## ChatGPT
@@ -477,7 +481,11 @@ tidak punya akses ke model itu seharusnya mendapat galat HTTP 400; belum pernah 
 - Riwayat dari 9router yang terus bertambah melanjutkan chat claude.ai yang sama (hanya pesan baru yang dikirim).
 - Kuota yang dilaporkan claude.ai setelah tiap jawaban ditulis di log (`quota used 5h 7% / 7d 0%`) dan ditampilkan
   `bridge status`. Kalau batas pemakaian tercapai, request gagal dengan HTTP 429.
-- `effort` (`low | medium | high | default`, bawaan `medium`) diteruskan seperti yang dikirim halaman.
+- `effort` (`low | medium | high | extra | default`, bawaan `medium`) menetapkan default penalaran seluruh akun.
+  Pemanggil juga bisa memilih per-request lewat akhiran nama model: `claude/opus:high`, `claude/opus:extra`,
+  atau `claude/opus:auto` (tidak mengirim effort, biar Claude yang putuskan). `claude/opus` saja memakai default.
+  Bentuk berakhiran ini tidak muncul di `/v1/models` tapi tetap diterima. (`extra` ada di Pro/Max; nilai persis
+  yang dikirim belum dikonfirmasi ke halaman asli.)
 - Belum ada: menghapus chat yang dibuat gateway, kunjungan keep-alive untuk login Claude, lampiran.
 
 ## ChatGPT

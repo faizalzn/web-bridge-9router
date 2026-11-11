@@ -236,4 +236,32 @@ async function run(provider, req) {
   ok('tool calls: argument keys are sorted, so a call sent back in another key order continues the same chat');
 }
 
+// 11: the effort can be chosen per request via a model suffix, without crowding the model list
+{
+  const r = new ProviderRegistry();
+  r.add(new ClaudeProvider({ enabled: true }, deps(), fake([])));
+  // the public list stays the three base models — no effort variants crowd /v1/models
+  assert.deepEqual(r.models().map((m) => m.id), ['claude/sonnet', 'claude/opus', 'claude/haiku']);
+  assert.ok(r.models().every((m) => !m.id.includes(':')));
+  // but the suffix forms resolve
+  assert.equal(r.resolve('claude/opus:high').localId, 'opus:high');
+  assert.equal(r.resolve('claude/sonnet:auto').localId, 'sonnet:auto');
+  assert.equal(r.resolve('claude-opus:extra').localId, 'opus:extra'); // dash form too
+  assert.throws(() => r.resolve('claude/opus:turbo'), /Unknown model|no model/);
+
+  // ":high" is sent as effort high; ":auto" sends no effort; no suffix uses the configured default
+  const t = fake([{ text: ['a'] }, { text: ['b'] }, { text: ['c'] }]);
+  const p = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0, effort: 'low' }, deps(), t);
+  await run(p, { model: 'opus:high', messages: [user('x')] });
+  assert.equal(t.calls[0].model, 'claude-opus-5-5'); assert.equal(t.calls[0].effort, 'high');
+  await run(p, { model: 'opus:auto', messages: [user('y')] });
+  assert.equal(t.calls[1].effort, undefined);
+  await run(p, { model: 'opus', messages: [user('z')] });
+  assert.equal(t.calls[2].effort, 'low'); // the provider's configured default
+  // a bad effort suffix is a 404 that names the valid forms
+  await assert.rejects(run(p, { model: 'opus:turbo', messages: [user('x')] }),
+    (e) => e instanceof BridgeError && e.status === 404 && /opus:auto[\s\S]*opus:extra/.test(e.message));
+  ok('effort: a model suffix picks the effort (opus:high / opus:auto); no suffix uses the default; a bad one is 404');
+}
+
 console.log(`claude-test: ${n} passed`);

@@ -24,6 +24,15 @@ export const CLAUDE_MODELS: ClaudeModel[] = [
 ];
 
 const EFFORTS = ['low', 'medium', 'high', 'extra'];
+/** Effort a caller may pin per request via the model suffix, plus "auto" (let Claude decide, send no effort field). */
+const REQUEST_EFFORTS = ['auto', ...EFFORTS];
+
+/** Splits "opus:high" into its base model id and an optional per-request effort. "opus" -> no effort override. */
+function splitEffort(localId: string): { base: string; effort?: string } {
+  const i = localId.indexOf(':');
+  return i === -1 ? { base: localId } : { base: localId.slice(0, i), effort: localId.slice(i + 1).toLowerCase() };
+}
+
 const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback);
 const accountFlag = (a: string) => (a === DEFAULT_ACCOUNT ? '' : ` --account ${a}`);
 const sec = (ms: number): string => (ms / 1000).toFixed(1) + 's';
@@ -76,6 +85,12 @@ export class ClaudeProvider implements Provider {
     return CLAUDE_MODELS.map((m) => ({ id: m.id, name: m.name, ...(m.unavailable ? { unavailable: m.unavailable } : {}) }));
   }
 
+  /** Accepts the effort suffix form kept out of listModels: "opus:high", "sonnet:auto", etc. */
+  acceptsModel(localId: string): boolean {
+    const { base, effort } = splitEffort(localId);
+    return CLAUDE_MODELS.some((m) => m.id === base) && (effort === undefined || REQUEST_EFFORTS.includes(effort));
+  }
+
   accounts(): string[] {
     const found = this.sessions.store.list('claude').map((s) => s.account);
     return found.sort((a, b) => (a === DEFAULT_ACCOUNT ? -1 : b === DEFAULT_ACCOUNT ? 1 : a.localeCompare(b)));
@@ -107,9 +122,15 @@ export class ClaudeProvider implements Provider {
 
   async *chat(req: ProviderRequest, signal: AbortSignal): AsyncGenerator<StreamEvent> {
     const account = req.account ?? DEFAULT_ACCOUNT;
-    const model = CLAUDE_MODELS.find((m) => m.id === req.model);
+    const { base, effort: override } = splitEffort(req.model);
+    const model = CLAUDE_MODELS.find((m) => m.id === base);
     if (!model) throw new BridgeError('not_found', `Unknown Claude model "${req.model}"`);
+    if (override !== undefined && !REQUEST_EFFORTS.includes(override)) {
+      throw new BridgeError('not_found', `Unknown effort "${override}" for Claude. Use ${base}:${REQUEST_EFFORTS.join(` | ${base}:`)}, or ${base} for the configured default`);
+    }
     if (model.unavailable) throw new BridgeError('unavailable', `${model.name} is not available through the gateway: ${model.unavailable}`);
+    // No suffix -> the configured default effort. ":auto" -> send no effort (Claude decides). Else the pinned effort.
+    const effort = override === undefined ? this.opts.effort : override === 'auto' ? undefined : override;
     await this.ensureLogin(account);
     const pause = this.paused.get(account);
     if (pause && Date.now() < pause.until) {
@@ -146,7 +167,7 @@ export class ClaudeProvider implements Provider {
         let parent = '';
         let stop = '';
         try {
-          for await (const u of this.transport.send(this.session(account), { model: model.modelId, effort: this.opts.effort, prompt, conv, signal })) {
+          for await (const u of this.transport.send(this.session(account), { model: model.modelId, effort, prompt, conv, signal })) {
             if (u.type === 'chat') chat = u.chat;
             else if (u.type === 'message') parent = u.uuid;
             else if (u.type === 'stop') stop = u.reason;
@@ -206,7 +227,7 @@ export class ClaudeProvider implements Provider {
       release();
       if (limit) this.limits.set(account, limit);
       const outcome = ok ? 'ok' : signal.aborted ? 'client gave up' : 'failed';
-      logger.info(`claude ${model.id}: ${hit ? 'continued chat' : 'new chat'}, prompt ${prompt.length} chars, waited ${sec(started - asked)}, `
+      logger.info(`claude ${model.id} (effort ${effort ?? (override === 'auto' ? 'auto' : 'default')}): ${hit ? 'continued chat' : 'new chat'}, prompt ${prompt.length} chars, waited ${sec(started - asked)}, `
         + `first reply ${firstMs === null ? 'never' : sec(firstMs)}, total ${sec(Date.now() - started)}, mode B, ${outcome}`
         + (limit ? `, quota used 5h ${pct(limit.fiveHour)} / 7d ${pct(limit.sevenDay)}` : ''));
     }

@@ -35,6 +35,12 @@ export interface Provider {
   /** True when the provider emits `tool_call` events itself; otherwise the gateway emulates tool calling in text. */
   readonly nativeTools?: boolean;
   listModels(): ModelInfo[];
+  /**
+   * True when the provider accepts a model id that is not in `listModels()` — used for suffix variants kept out of
+   * the public list, such as Claude's `opus:high` effort form. The registry falls back to this when the exact id
+   * does not match, so these variants resolve without crowding `/v1/models`.
+   */
+  acceptsModel?(localId: string): boolean;
   /** Saved accounts, when the provider supports several. */
   accounts?(): string[];
   status(): Promise<ProviderStatus>;

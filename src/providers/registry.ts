@@ -43,7 +43,7 @@ export class ProviderRegistry {
       for (const p of this.list()) {
         if (!model.startsWith(`${p.id}-`)) continue;
         const local = model.slice(p.id.length + 1);
-        if (p.listModels().some((m) => m.id === local)) return { provider: p, localId: local };
+        if (p.listModels().some((m) => m.id === local) || p.acceptsModel?.(local)) return { provider: p, localId: local };
       }
     }
     const slash = model.indexOf('/');
@@ -55,7 +55,7 @@ export class ProviderRegistry {
       throw new BridgeError('not_found', `Unknown model "${model}". Available: ${known}`);
     }
     const localId = slash === -1 ? provider.listModels()[0]?.id : model.slice(slash + 1);
-    if (!localId || !provider.listModels().some((m) => m.id === localId)) {
+    if (!localId || !(provider.listModels().some((m) => m.id === localId) || provider.acceptsModel?.(localId))) {
       const own = provider.listModels().map((m) => `${head}/${m.id}`).join(', ');
       throw new BridgeError('not_found', `Provider "${providerId}" has no model "${localId ?? ''}". Available: ${own}`);
     }
