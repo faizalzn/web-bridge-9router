@@ -16,6 +16,21 @@ export interface ClaudeTransport {
 }
 
 const CHUNK_FN = '__bridgeClaudeChunk';
+
+/**
+ * The page navigated while a request ran in it. Cloudflare does that when it replaces the page with its bot check,
+ * so look at what the page shows now before calling it a protocol error.
+ */
+async function afterNavigation(p: Page, err: unknown): Promise<never> {
+  const msg = (err as Error)?.message ?? String(err);
+  if (!/Execution context was destroyed|navigat/i.test(msg)) throw err;
+  await p.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+  const html = await p.content().catch(() => '');
+  if (CF_CHALLENGE.test(html)) throw errorFromBody(403, html);
+  let where = '';
+  try { const u = new URL(p.url()); where = ` (now at ${u.host}${u.pathname})`; } catch { /* closed */ }
+  throw new ClaudeError('protocol', `the claude.ai page navigated away during the request${where}`);
+}
 const HOME = `${CLAUDE_ORIGIN}/new`;
 
 /**
@@ -78,7 +93,7 @@ export class ClaudePageTransport implements ClaudeTransport {
           await (window as unknown as Record<string, (s: string) => Promise<void>>)[fn]!(decoder.decode(value, { stream: true }));
         }
         return { status: res.status, text: '' };
-      }, { url: built.url, body: built.body, fn: CHUNK_FN });
+      }, { url: built.url, body: built.body, fn: CHUNK_FN }).catch((err: unknown) => afterNavigation(p, err));
 
       if (r.status !== 200) throw errorFromBody(r.status, r.text);
       for (const u of parser.end()) out.push(u);

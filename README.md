@@ -173,7 +173,10 @@ without access to one should get an HTTP 400 error; not seen yet).
 - Mode B only: the request is sent from inside a claude.ai page in the account's own browser profile, so the login
   must be held by that profile (`session.hold_in_browser: true`, the default). claude.ai sits behind Cloudflare, so
   there is no plain-HTTP mode. If Cloudflare shows a bot check, the request fails with HTTP 503; the gateway does not
-  try to get past it.
+  try to get past it. Claude requests for that account are then paused (10 min, doubling up to 1 h while the check
+  keeps coming back; `bot_check_pause` in seconds) and answered with 503 at once, instead of opening claude.ai again
+  for every retry of 9router or Hermes. On 11 Nov 2026 this happened after about 35 requests in one hour through
+  Hermes; how long such a check lasts is not known yet.
 - No connector or server tools of the account (documents, web search, widgets) are sent, so the model cannot act on
   the account by itself. Tool calling for clients such as Hermes is emulated by the gateway, as for Gemini.
 - 9router's growing history continues the same claude.ai chat (only the new message is sent).
@@ -405,7 +408,10 @@ tidak punya akses ke model itu seharusnya mendapat galat HTTP 400; belum pernah 
 - Hanya mode B: request dikirim dari dalam halaman claude.ai di profil browser akun itu sendiri, jadi login harus
   dipegang profil tersebut (`session.hold_in_browser: true`, bawaan). claude.ai dilindungi Cloudflare, jadi tidak ada
   mode HTTP biasa. Kalau Cloudflare menampilkan pemeriksaan bot, request gagal dengan HTTP 503; gateway tidak mencoba
-  melewatinya.
+  melewatinya. Request Claude untuk akun itu lalu dijeda (10 menit, berlipat sampai 1 jam selama pemeriksaan terus
+  muncul; `bot_check_pause` dalam detik) dan langsung dijawab 503, bukan membuka claude.ai lagi untuk setiap percobaan
+  ulang dari 9router atau Hermes. Pada 11 Nov 2026 ini terjadi setelah sekitar 35 request dalam satu jam lewat Hermes;
+  berapa lama pemeriksaan seperti itu bertahan belum diketahui.
 - Connector dan tool server milik akun (dokumen, pencarian web, widget) tidak dikirim, jadi model tidak bisa bertindak
   atas akun dengan sendirinya. Tool calling untuk klien seperti Hermes ditiru oleh gateway, sama seperti Gemini.
 - Riwayat dari 9router yang terus bertambah melanjutkan chat claude.ai yang sama (hanya pesan baru yang dikirim).

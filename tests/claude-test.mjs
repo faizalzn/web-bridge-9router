@@ -154,14 +154,19 @@ async function run(provider, req) {
 {
   const p1 = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0 }, deps(), fake([new ClaudeError('rate_limit', 'The claude.ai usage limit of this account is reached')]));
   await assert.rejects(run(p1, { messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 429);
-  const p2 = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0 }, deps(), fake([new ClaudeError('blocked', 'Cloudflare bot check')]));
-  await assert.rejects(run(p2, { messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 503 && /Cloudflare/.test(e.message));
+  const t2 = fake([new ClaudeError('blocked', 'Cloudflare bot check'), { text: ['never'] }]);
+  const p2 = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0 }, deps(), t2);
+  await assert.rejects(run(p2, { messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 503 && /Cloudflare[\s\S]*paused until/.test(e.message));
+  // the client retries at once: answered from the pause, claude.ai is not opened again
+  await assert.rejects(run(p2, { messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 503 && /paused until/.test(e.message));
+  assert.equal(t2.calls.length, 1);
+  assert.match((await p2.status()).detail, /PAUSED after a Cloudflare bot check/);
   await assert.rejects(run(p2, { model: 'gpt', messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 404);
   const t3 = fake([{ text: ['never'] }]);
   const p3 = new ClaudeProvider({ enabled: true, min_interval: 0, jitter: 0 }, deps({ held: false }), t3);
   await assert.rejects(run(p3, { messages: [user('x')] }), (e) => e instanceof BridgeError && e.status === 401 && /hold_in_browser/.test(e.message));
   assert.equal(t3.calls.length, 0);
-  ok('provider: usage limit -> 429, bot check -> 503 (no retry), unknown model -> 404, copied login -> 401');
+  ok('provider: usage limit -> 429, bot check -> 503 and a pause (retries do not reopen claude.ai), unknown model -> 404, copied login -> 401');
 }
 
 // 7: an auth error triggers one login check in the browser; when the login is fine the request is retried once

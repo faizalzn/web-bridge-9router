@@ -50,6 +50,7 @@ providers:
     # effort: medium           # low | medium | high | default (what claude.ai picks)
     # reuse_chats: true        # continue the same web chat when 9router resends a longer history
     # min_interval: 2          # seconds between two requests to the same account
+    # bot_check_pause: 600     # after a Cloudflare bot check, pause this account's requests (doubles up to 1 h)
     # jitter: 1.5
     # max_waiting: 10
     # max_wait: 180

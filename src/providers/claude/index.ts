@@ -27,6 +27,7 @@ const EFFORTS = ['low', 'medium', 'high'];
 const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback);
 const accountFlag = (a: string) => (a === DEFAULT_ACCOUNT ? '' : ` --account ${a}`);
 const sec = (ms: number): string => (ms / 1000).toFixed(1) + 's';
+const clock = (ms: number): string => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 const pct = (v?: number): string => (v === undefined ? '?' : `${Math.round(v * 100)}%`);
 
 interface CachedChat extends ClaudeConv { account: string }
@@ -46,6 +47,12 @@ export class ClaudeProvider implements Provider {
   private readonly queue: AccountQueue;
   private readonly cache: ConversationCache<CachedChat>;
   private readonly opts: { effort?: string; reuseChats: boolean };
+  /**
+   * Accounts that met a Cloudflare bot check: no request opens claude.ai for them until `until`. Retrying at once
+   * (9router and Hermes retry every few seconds) would only hit the check again and again.
+   */
+  private readonly paused = new Map<string, { until: number; streak: number; at: number }>();
+  private readonly pauseMs: number;
   /** Last quota report per account, shown in the status. */
   private readonly limits = new Map<string, ClaudeLimit>();
 
@@ -54,6 +61,7 @@ export class ClaudeProvider implements Provider {
     const effort = typeof cfg.effort === 'string' ? cfg.effort : 'medium';
     if (effort !== 'default' && !EFFORTS.includes(effort)) throw new Error(`Invalid providers.claude.effort: ${effort} (low | medium | high | default)`);
     this.opts = { effort: effort === 'default' ? undefined : effort, reuseChats: cfg.reuse_chats !== false };
+    this.pauseMs = num(cfg.bot_check_pause, 600) * 1000;
     this.transport = transport ?? new ClaudePageTransport(deps.browser ?? new BrowserManager(deps.config));
     this.queue = new AccountQueue({
       minGapMs: num(cfg.min_interval, 2) * 1000,
@@ -90,6 +98,8 @@ export class ClaudeProvider implements Provider {
         }
       } catch { /* undecryptable */ }
       const l = this.limits.get(a);
+      const p = this.paused.get(a);
+      if (p && Date.now() < p.until) state += `, PAUSED after a Cloudflare bot check until ${clock(p.until)}`;
       parts.push(`${a}: ${state}, mode B${l ? `, quota used 5h ${pct(l.fiveHour)} / 7d ${pct(l.sevenDay)}` : ''}`);
     }
     return { loggedIn: anyUsable, mode: 'B', detail: parts.join('; ') };
@@ -101,6 +111,11 @@ export class ClaudeProvider implements Provider {
     if (!model) throw new BridgeError('not_found', `Unknown Claude model "${req.model}"`);
     if (model.unavailable) throw new BridgeError('unavailable', `${model.name} is not available through the gateway: ${model.unavailable}`);
     await this.ensureLogin(account);
+    const pause = this.paused.get(account);
+    if (pause && Date.now() < pause.until) {
+      throw new BridgeError('unavailable', `claude.ai showed a Cloudflare bot check for account "${account}" at ${clock(pause.at)}; `
+        + `Claude requests are paused until ${clock(pause.until)} instead of being retried (the gateway does not try to get past the check)`);
+    }
 
     const scope = `${account}|${model.modelId}`;
     const hit = this.opts.reuseChats ? this.cache.find(scope, req.system, req.messages) : null;
@@ -152,6 +167,7 @@ export class ClaudeProvider implements Provider {
               { chat, parent, account });
           }
           ok = true;
+          this.paused.delete(account);
           return;
         } catch (err) {
           if (signal.aborted || err instanceof BridgeError) throw err;
@@ -172,7 +188,14 @@ export class ClaudeProvider implements Provider {
               await sleep(3000, undefined, { signal });
               continue;
             case 'rate_limit': throw new BridgeError('rate_limit', ce.message);
-            case 'blocked': throw new BridgeError('unavailable', ce.message);
+            case 'blocked': {
+              const streak = (this.paused.get(account)?.streak ?? 0) + 1;
+              const now = Date.now();
+              const until = now + Math.min(this.pauseMs * 2 ** (streak - 1), Math.max(this.pauseMs, 3_600_000));
+              this.paused.set(account, { until, streak, at: now });
+              logger.warn(`claude ${account}: Cloudflare bot check; Claude requests for this account paused until ${clock(until)}`);
+              throw new BridgeError('unavailable', `${ce.message}. Claude requests for this account are paused until ${clock(until)}`);
+            }
             case 'bad_model': throw new BridgeError('invalid_request', `${ce.message} (${model.name})`);
             case 'protocol':
               throw new BridgeError('provider', streamed ? `The claude.ai stream was interrupted: ${ce.message}` : ce.message);
