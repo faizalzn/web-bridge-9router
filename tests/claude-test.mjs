@@ -212,4 +212,23 @@ async function run(provider, req) {
   ok('cache: a missed continuation is explained (system prompt changed / which message differs); unrelated chats are not');
 }
 
+// 10: a tool call the client sends back with its argument keys in another order still continues the same chat
+{
+  const { ConversationCache } = await import(base + 'core/conversation-cache.js');
+  const { renderToolCall } = await import(base + 'core/tool-format.js');
+  assert.equal(renderToolCall('w', '{"path":"a","content":"b","opt":{"z":1,"y":[{"b":1,"a":2}]}}'),
+    renderToolCall('w', '{"opt":{"y":[{"a":2,"b":1}],"z":1},"content":"b","path":"a"}'));
+  const c = new ConversationCache({ max: 10, ttlMs: 60_000 });
+  // what the gateway remembers: the canonical text of the reply (seen live: path before content)
+  c.put('s', 'SYS', [user('Buat file'), asst(renderToolCall('write_file', '{"path":"uji-tool/dua.txt","content":"dua"}'))], 'chat-1');
+  // what 9router/Hermes sends back: a tool_call part with the keys swapped, then the tool result
+  const back = [
+    user('Buat file'),
+    { role: 'assistant', content: [{ type: 'tool_call', id: 'call_1', name: 'write_file', arguments: '{"content":"dua","path":"uji-tool/dua.txt"}' }] },
+    { role: 'tool', content: [{ type: 'tool_result', toolCallId: 'call_1', content: '{"bytes_written": 3}' }] },
+  ];
+  assert.equal(c.find('s', 'SYS', back)?.ref, 'chat-1');
+  ok('tool calls: argument keys are sorted, so a call sent back in another key order continues the same chat');
+}
+
 console.log(`claude-test: ${n} passed`);
