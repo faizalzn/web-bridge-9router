@@ -24,4 +24,4 @@ work was done, with `tool calls: none`, is a fail.
 
 | Date | Model | Passed | Notes |
 |---|---|---|---|
-| | | | |
+| 2026-11-11 | claude/sonnet (claude.ai Free) | 10/10 | Hermes had no bash (`HERMES_GIT_BASH_PATH` not loaded yet), so `write_file`/`read_file` failed and the model switched to `execute_code` by itself and said so. Every step was a real tool call in the gateway log; #9 had `tool calls: none`. 24 requests, 3.4–7.4 s each. 5h quota 5% → 21%, 7d 1%. The second request started a new chat instead of continuing (cause not known yet). One stream was ended by the client after 4.8 s (Hermes: "Clean EOF, no finish_reason"); Hermes retried and the task finished. |
